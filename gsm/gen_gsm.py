@@ -2,6 +2,8 @@ import openai
 import json
 import numpy as np
 import random
+import os
+import pandas as pd
 
 def construct_message(agents, question, idx):
     if len(agents) == 0:
@@ -29,6 +31,9 @@ def read_jsonl(path: str):
         return [json.loads(line) for line in fh.readlines() if line]
 
 if __name__ == "__main__":
+    api_key = list(pd.read_csv('key.csv')['openai'])[0]
+
+    os.system(f"export OPENAI_API_KEY=\"{api_key}\"")
     agents = 3
     rounds = 2
     random.seed(0)
@@ -51,18 +56,25 @@ if __name__ == "__main__":
                     agent_contexts_other = agent_contexts[:i] + agent_contexts[i+1:]
                     message = construct_message(agent_contexts_other, question, 2*round - 1)
                     agent_context.append(message)
-
-                completion = openai.ChatCompletion.create(
-                          model="gpt-3.5-turbo-0301",
-                          messages=agent_context,
-                          n=1)
+                while True:
+                    try:
+                        completion = openai.ChatCompletion.create(
+                                  model="gpt-3.5-turbo-0613",
+                                  messages=agent_context,
+                                  proxy='http://127.0.0.1:7890',
+                                  temperatue=0.8,
+                                  n=1)
+                        break
+                    except Exception as err:
+                        print(err)
+                        continue
 
                 assistant_message = construct_assistant_message(completion)
                 agent_context.append(assistant_message)
 
         generated_description[question] = (agent_contexts, answer)
 
-    json.dump(generated_description, open("gsm_{}_{}.json".format(agents, rounds), "w"))
+    json.dump(generated_description, open("./gsm_{}_{}.json".format(agents, rounds), "w"))
 
     import pdb
     pdb.set_trace()

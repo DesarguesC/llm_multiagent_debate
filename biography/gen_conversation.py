@@ -105,5 +105,5 @@ if __name__ == "__main__":
 
         generated_description[person] = agent_contexts
 
-    json.dump(generated_description, open("biography_{}_{}.json".format(agents, rounds), "w"))
+    json.dump(generated_description, open("./biography_{}_{}.json".format(agents, rounds), "w"))
 

@@ -5,7 +5,7 @@ __pycache__/
 *.mp4
 .Ds_Store
 *.zip
-
+*.pgn
 
 test_out/
 checkpoints/

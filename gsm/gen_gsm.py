@@ -4,6 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import openai
 import json
+from time import time
 from claude_util import *
 import numpy as np
 import random
@@ -16,7 +17,6 @@ def construct_message(agents, question, idx):
     prefix_string = "These are the solutions to the problem from other agents: "
 
     for agent in agents:
-        print(f'idx = {idx}, type: {type(idx)}')
         agent_response = agent[idx]["content"]
         response = "\n\n One agent solution: ```{}```".format(agent_response)
 
@@ -36,10 +36,15 @@ def read_jsonl(path: str):
         return [json.loads(line) for line in fh.readlines() if line]
 
 if __name__ == "__main__":
+    """
+        run file in main directory: 
+            python gsm/gen_gsm.py
+    """
+
     api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
 
     os.system(f"export API_KEY=\"{api_key}\"")
-    claud_agent = Claude(engine='claude-instant-1.2', api_key=api_key)
+    claud_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key)
     agents = 3
     rounds = 2
     random.seed(0)
@@ -50,7 +55,9 @@ if __name__ == "__main__":
     random.shuffle(questions)
 
     cnt = 0
+    start_time = time()
     for data in questions[:2]: # original: 100
+        # gen [0, 2) with claude-3-hiku: input - 5631 tokens, output - 2291 tokens
         print(f'ask - {cnt}')
         cnt += 1
 
@@ -68,13 +75,15 @@ if __name__ == "__main__":
                 while True:
                     try:
                         completion = claud_agent.context_ask(agent_context)
-                        print(completion.content[-1].text)
+                        # text content: completion.content[-1].text
+
                         # completion = openai.ChatCompletion.create(
                         #           model="gpt-3.5-turbo-0613",
                         #           messages=agent_context,
                         #           proxy='http://127.0.0.1:7890',
                         #           temperatue=0.8,
                         #           n=1)
+
                         break
                     except Exception as err:
                         print(err)
@@ -90,7 +99,10 @@ if __name__ == "__main__":
 
     json.dump(generated_description, open("./gsm/gsm_{}_{}.json".format(agents, rounds), "w"))
 
-    import pdb
-    pdb.set_trace()
-    print(answer)
-    print(agent_context)
+    # import pdb
+    # pdb.set_trace()
+    # print(answer)
+    # print(agent_context)
+    end_time = time()
+    print(f'request time = {end_time - start_time}') # 25.13s for 2
+

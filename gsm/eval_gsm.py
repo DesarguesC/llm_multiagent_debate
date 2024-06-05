@@ -119,7 +119,12 @@ def most_frequent(List):
     return num
 
 if __name__ == "__main__":
-    response_dict = json.load(open("gsm_debate_3_3.json", "r"))
+    """
+        run file in main directory: 
+            python gsm/eval_gsm.py
+    """
+
+    response_dict = json.load(open("./gsm/gsm_3_2.json", "r"))
 
     questions = list(response_dict.keys())
 

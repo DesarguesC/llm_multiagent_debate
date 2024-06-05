@@ -6,6 +6,7 @@ __pycache__/
 .Ds_Store
 *.zip
 *.pgn
+*.json
 
 test_out/
 checkpoints/

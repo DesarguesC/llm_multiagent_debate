@@ -7,6 +7,7 @@ import openai
 import pandas as pd
 import numpy as np
 import time
+from tqdm import tqdm
 
 def parse_bullets(sentence):
     bullets_preprocess = sentence.split("\n")
@@ -80,9 +81,12 @@ if __name__ == "__main__":
     people = list(response.keys())
 
     accuracies = []
+    start_time = time.time()
+    print(f'len(people) = {len(people)}')
+    # sys.exit(0)
 
-    for person in people:
-
+    for idd in tqdm(range(len(people))):
+        person = people[idd]
         if person not in gt_data:
             continue
 
@@ -90,8 +94,8 @@ if __name__ == "__main__":
         gt_bullets = parse_bullets(gt_description)
         bio_descriptions = response[person]# [2][-1]['content']
 
-        for description in bio_descriptions:
 
+        for description in bio_descriptions:
             bio_description = description[-1]['content']
             # print(f'bio_description = {bio_description}')
 
@@ -105,7 +109,7 @@ if __name__ == "__main__":
 
             for bullet in gt_bullets:
                 message = [{"role": "user", "content": "Consider the following biography of {}: \n {} \n\n Is the above biography above consistent with the fact below? \n\n {} \n Give a single word answer, yes, no, or uncertain. Carefully check the precise dates and locations between the fact and the above biography.".format(person, bio_bullets, bullet)}]
-
+                # valid
                 while True:
                     try:
                         completion = openai.ChatCompletion.create(
@@ -125,5 +129,7 @@ if __name__ == "__main__":
                 if accurate is not None:
                     accuracies.append(float(accurate))
 
-            print("accuracies:", np.mean(accuracies), np.std(accuracies) / (len(accuracies) ** 0.5))
 
+    print("accuracies:", np.mean(accuracies), np.std(accuracies) / (len(accuracies) ** 0.5))
+    end_time = time.time()
+    print(f'request cost time = {end_time - start_time}') # 135.03s for 5 persons

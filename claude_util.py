@@ -7,10 +7,10 @@ def encode_image(image_path):
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 class Claude():
-    def __init__(self, engine, api_key, system_prompt, proxy='http://127.0.0.1:7890', max_tokens=300, temperature=0.8):
+    def __init__(self, engine, api_key, system_prompt="", proxy='http://127.0.0.1:7890', max_tokens=300, temperature=0.7):
         self.engine = engine
         self.api_key = api_key
-        self.system_prompt = system_prompt + '\nAny irrelevant characters appear in your response is STRICTLY forbidden. '
+        self.system_prompt = system_prompt # + '\nAny irrelevant characters appear in your response is STRICTLY forbidden. '
         self.proxy = proxy
         self.max_tokens = max_tokens
         self.temperature = temperature
@@ -39,6 +39,15 @@ class Claude():
             
             return res
         else: return response
+    def context_ask(self, agent_context):
+        response = self.client.messages.create(
+            model=self.engine,  # "claude-2.1",
+            max_tokens=self.max_tokens,
+            system=self.system_prompt,  # <-- system prompt
+            temperature=self.temperature,
+            messages=agent_context
+        )# .content[-1].text
+        return response
 
 
 class Vision_Claude():

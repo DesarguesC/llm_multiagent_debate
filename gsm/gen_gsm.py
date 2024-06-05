@@ -1,8 +1,12 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 import openai
 import json
+from claude_util import *
 import numpy as np
 import random
-import os
 import pandas as pd
 
 def construct_message(agents, question, idx):
@@ -12,6 +16,7 @@ def construct_message(agents, question, idx):
     prefix_string = "These are the solutions to the problem from other agents: "
 
     for agent in agents:
+        print(f'idx = {idx}, type: {type(idx)}')
         agent_response = agent[idx]["content"]
         response = "\n\n One agent solution: ```{}```".format(agent_response)
 
@@ -31,19 +36,24 @@ def read_jsonl(path: str):
         return [json.loads(line) for line in fh.readlines() if line]
 
 if __name__ == "__main__":
-    api_key = list(pd.read_csv('key.csv')['openai'])[0]
+    api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
 
-    os.system(f"export OPENAI_API_KEY=\"{api_key}\"")
+    os.system(f"export API_KEY=\"{api_key}\"")
+    claud_agent = Claude(engine='claude-instant-1.2', api_key=api_key)
     agents = 3
     rounds = 2
     random.seed(0)
 
     generated_description = {}
 
-    questions = read_jsonl("/data/vision/billf/scratch/yilundu/llm_iterative_debate/grade-school-math/grade_school_math/data/test.jsonl")
+    questions = read_jsonl("./grade_school_math/data/test.jsonl")
     random.shuffle(questions)
 
-    for data in questions[:100]:
+    cnt = 0
+    for data in questions[:2]: # original: 100
+        print(f'ask - {cnt}')
+        cnt += 1
+
         question = data['question']
         answer = data['answer']
 
@@ -51,30 +61,34 @@ if __name__ == "__main__":
 
         for round in range(rounds):
             for i, agent_context in enumerate(agent_contexts):
-
                 if round != 0:
                     agent_contexts_other = agent_contexts[:i] + agent_contexts[i+1:]
                     message = construct_message(agent_contexts_other, question, 2*round - 1)
                     agent_context.append(message)
                 while True:
                     try:
-                        completion = openai.ChatCompletion.create(
-                                  model="gpt-3.5-turbo-0613",
-                                  messages=agent_context,
-                                  proxy='http://127.0.0.1:7890',
-                                  temperatue=0.8,
-                                  n=1)
+                        completion = claud_agent.context_ask(agent_context)
+                        print(completion.content[-1].text)
+                        # completion = openai.ChatCompletion.create(
+                        #           model="gpt-3.5-turbo-0613",
+                        #           messages=agent_context,
+                        #           proxy='http://127.0.0.1:7890',
+                        #           temperatue=0.8,
+                        #           n=1)
                         break
                     except Exception as err:
                         print(err)
                         continue
 
-                assistant_message = construct_assistant_message(completion)
-                agent_context.append(assistant_message)
+                # assistant_message = construct_assistant_message(completion)
+                agent_context.append({
+                    "role": "assistant",
+                    "content": completion.content[-1].text
+                })
 
         generated_description[question] = (agent_contexts, answer)
 
-    json.dump(generated_description, open("./gsm_{}_{}.json".format(agents, rounds), "w"))
+    json.dump(generated_description, open("./gsm/gsm_{}_{}.json".format(agents, rounds), "w"))
 
     import pdb
     pdb.set_trace()

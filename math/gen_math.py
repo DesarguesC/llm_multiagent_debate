@@ -6,7 +6,7 @@ from claude_util import *
 import json
 import numpy as np
 import pandas as pd
-from time import time
+import time
 import pickle
 from tqdm import tqdm
 
@@ -40,6 +40,7 @@ def generate_answer(answer_context, claude_agent=None):
         except Exception as err:
             print(err)
             time.sleep(20)
+            continue
 
     return completion
 
@@ -112,7 +113,7 @@ if __name__ == "__main__":
 
     generated_description = {}
 
-    start_time = time()
+    start_time = time.time()
     for round in tqdm(range(evaluation_round)):
         a, b, c, d, e, f = np.random.randint(0, 30, size=6)
 
@@ -169,7 +170,7 @@ if __name__ == "__main__":
         # mean = 1.0, var = 0.0
 
     pickle.dump(generated_description, open("./math/math_agents{}_rounds{}.pq".format(agents, rounds), "wb"))
-    end_time = time()
+    end_time = time.time()
     print(f'request cost time = {end_time - start_time}') # cost 54.40s for 5 epoch
     # import pdb
     # pdb.set_trace()

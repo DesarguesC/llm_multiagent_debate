@@ -3,7 +3,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import openai
 import json
-from time import time
+import time
 from claude_util import *
 import numpy as np
 import random
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     """
     # init Claude Agent
     api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
-    claud_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key)
+    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key)
 
     agents = 3
     rounds = 2
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # cnt = 0
     questions_length = 2 # original: 100
-    start_time = time()
+    start_time = time.time()
     for idd in tqdm(range(questions_length)):
         data = questions[idd]
         # gen [0, 2) with claude-3-hiku: input - 5631 tokens, output - 2291 tokens
@@ -75,19 +75,18 @@ if __name__ == "__main__":
                     agent_context.append(message)
                 while True:
                     try:
-                        completion = claud_agent.context_ask(agent_context)
-                        # text content: completion.content[-1].text
-
-                        # completion = openai.ChatCompletion.create(
-                        #           model="gpt-3.5-turbo-0613",
-                        #           messages=agent_context,
-                        #           proxy='http://127.0.0.1:7890',
-                        #           temperatue=0.8,
-                        #           n=1)
+                        completion = openai.ChatCompletion.create(
+                                  model="gpt-3.5-turbo-0613",
+                                  messages=agent_context,
+                                  proxy='http://127.0.0.1:7890',
+                                  temperatue=0.8,
+                                  n=1) if claude_agent is None else \
+                                    claude_agent.context_ask(agent_context)
 
                         break
                     except Exception as err:
                         print(err)
+                        time.sleep(20)
                         continue
 
                 # assistant_message = construct_assistant_message(completion)
@@ -104,6 +103,6 @@ if __name__ == "__main__":
     # pdb.set_trace()
     # print(answer)
     # print(agent_context)
-    end_time = time()
+    end_time = time.time()
     print(f'request time = {end_time - start_time}') # 25.13s for 2
 

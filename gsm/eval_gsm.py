@@ -125,9 +125,7 @@ if __name__ == "__main__":
     """
 
     response_dict = json.load(open("./gsm/gsm_3_2.json", "r"))
-
     questions = list(response_dict.keys())
-
     accuracies = []
 
     for question in questions:
@@ -148,6 +146,6 @@ if __name__ == "__main__":
             pdb.set_trace()
             print(gt)
 
-        print("accuracies:", np.mean(accuracies), np.std(accuracies) / (len(accuracies) ** 0.5))
-        # mean = 1.0, var = 0.0
+    print("accuracies:", np.mean(accuracies), np.std(accuracies) / (len(accuracies) ** 0.5))
+    # mean = 1.0, var = 0.0
 

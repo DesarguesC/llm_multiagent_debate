@@ -8,6 +8,7 @@ __pycache__/
 *.pgn
 *.json
 *.p
+mmlu/data/
 
 test_out/
 checkpoints/

@@ -1,7 +1,12 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import openai
+from claude_util import *
 import json
 import numpy as np
-import time
+import pandas as pd
+from time import time
 import pickle
 from tqdm import tqdm
 
@@ -23,16 +28,18 @@ def parse_bullets(sentence):
     return bullets
 
 
-def generate_answer(answer_context):
-    try:
-        completion = openai.ChatCompletion.create(
-                  model="gpt-3.5-turbo-0301",
-                  messages=answer_context,
-                  n=1)
-    except:
-        print("retrying due to an error......")
-        time.sleep(20)
-        return generate_answer(answer_context)
+def generate_answer(answer_context, claude_agent=None):
+    while True:
+        try:
+            completion = openai.ChatCompletion.create(
+                              model="gpt-3.5-turbo-0301",
+                              messages=answer_context,
+                              n=1) if claude_agent is None else \
+                            claude_agent.context_ask(answer_context)
+            break
+        except Exception as err:
+            print(err)
+            time.sleep(20)
 
     return completion
 
@@ -55,9 +62,10 @@ def construct_message(agents, question, idx):
     return {"role": "user", "content": prefix_string}
 
 
-def construct_assistant_message(completion):
-    content = completion["choices"][0]["message"]["content"]
-    return {"role": "assistant", "content": content}
+def construct_assistant_message(completion, is_claude=False):
+
+    return {"role": "assistant", "content": completion.content[-1].text} if is_claude else \
+            {"role": "assistant", "content": completion["choices"][0]["message"]["content"]}
 
 def parse_answer(sentence):
     parts = sentence.split(" ")
@@ -84,17 +92,27 @@ def most_frequent(List):
 
 
 if __name__ == "__main__":
+    """
+        run file in main directory: 
+            python math/gen_math.py
+    """
+
+    # init Claude Agent
+    api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
+    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key)
+
     answer = parse_answer("My answer is the same as the other agents and AI language model: the result of 12+28*19+6 is 550.")
 
     agents = 2
     rounds = 3
     np.random.seed(0)
 
-    evaluation_round = 100
+    evaluation_round = 5 # original: 100
     scores = []
 
     generated_description = {}
 
+    start_time = time()
     for round in tqdm(range(evaluation_round)):
         a, b, c, d, e, f = np.random.randint(0, 30, size=6)
 
@@ -112,13 +130,17 @@ if __name__ == "__main__":
                     message = construct_message(agent_contexts_other, question_prompt, 2*round - 1)
                     agent_context.append(message)
 
-                    print("message: ", message)
+                    # print("message: ", message)
 
-                completion = generate_answer(agent_context)
+                completion = generate_answer(agent_context, claude_agent=claude_agent)
+                # print(completion.content[-1].text)
 
-                assistant_message = construct_assistant_message(completion)
-                agent_context.append(assistant_message)
-                print(completion)
+                assistant_message = construct_assistant_message(completion, is_claude=True)
+                agent_context.append({
+                    "role": "assistant",
+                    "content": completion.content[-1].text
+                })
+
 
         text_answers = []
 
@@ -144,9 +166,13 @@ if __name__ == "__main__":
             continue
 
         print("performance:", np.mean(scores), np.std(scores) / (len(scores) ** 0.5))
+        # mean = 1.0, var = 0.0
 
-    pickle.dump(generated_description, open("math_agents{}_rounds{}.p".format(agents, rounds), "wb"))
-    import pdb
-    pdb.set_trace()
-    print(answer)
-    print(agent_context)
+    pickle.dump(generated_description, open("./math/math_agents{}_rounds{}.pq".format(agents, rounds), "wb"))
+    end_time = time()
+    print(f'request cost time = {end_time - start_time}') # cost 54.40s for 5 epoch
+    # import pdb
+    # pdb.set_trace()
+    # print(answer)
+    # print(agent_context)
+

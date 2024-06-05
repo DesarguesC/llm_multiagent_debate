@@ -1,13 +1,13 @@
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
 import openai
 import json
 from time import time
 from claude_util import *
 import numpy as np
 import random
+from tqdm import tqdm
 import pandas as pd
 
 def construct_message(agents, question, idx):
@@ -40,11 +40,10 @@ if __name__ == "__main__":
         run file in main directory: 
             python gsm/gen_gsm.py
     """
-
+    # init Claude Agent
     api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
-
-    os.system(f"export API_KEY=\"{api_key}\"")
     claud_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key)
+
     agents = 3
     rounds = 2
     random.seed(0)
@@ -54,12 +53,14 @@ if __name__ == "__main__":
     questions = read_jsonl("./grade_school_math/data/test.jsonl")
     random.shuffle(questions)
 
-    cnt = 0
+    # cnt = 0
+    questions_length = 2 # original: 100
     start_time = time()
-    for data in questions[:2]: # original: 100
+    for idd in tqdm(range(questions_length)):
+        data = questions[idd]
         # gen [0, 2) with claude-3-hiku: input - 5631 tokens, output - 2291 tokens
-        print(f'ask - {cnt}')
-        cnt += 1
+        # print(f'ask - {cnt}')
+        # cnt += 1
 
         question = data['question']
         answer = data['answer']

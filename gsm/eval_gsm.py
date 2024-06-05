@@ -149,4 +149,5 @@ if __name__ == "__main__":
             print(gt)
 
         print("accuracies:", np.mean(accuracies), np.std(accuracies) / (len(accuracies) ** 0.5))
+        # mean = 1.0, var = 0.0
 

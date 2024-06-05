@@ -1,7 +1,13 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import json
+from claude_util import *
 import openai
 import random
+from time import time
 from tqdm import tqdm
+import pandas as pd
 
 def parse_bullets(sentence):
     bullets_preprocess = sentence.split("\n")
@@ -47,13 +53,24 @@ def construct_message(agents, idx, person, final=False):
     return {"role": "user", "content": prefix_string}
 
 
-def construct_assistant_message(completion):
-    content = completion["choices"][0]["message"]["content"]
-    return {"role": "assistant", "content": content}
+def construct_assistant_message(completion, is_claude=False):
+
+    return {"role": "assistant", "content": completion.content[-1].text} if is_claude else \
+             {"role": "assistant", "content": completion["choices"][0]["message"]["content"]}
 
 
 if __name__ == "__main__":
-    with open("article.json", "r") as f:
+
+    """
+        run file in main directory: 
+            python math/gen_math.py
+     """
+
+    # init Claude Agent
+    api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
+    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key)
+
+    with open("./biography/article.json", "r") as f:
         data = json.load(f)
 
     people = sorted(data.keys())
@@ -66,8 +83,10 @@ if __name__ == "__main__":
 
     generated_description = {}
 
-
-    for person in tqdm(people[:40]):
+    people_num = 5 # original: 40
+    start_time = time()
+    for idd in tqdm(range(people_num)):
+        person = people[idd]
         agent_contexts = [[{"role": "user", "content": "Give a bullet point biography of {} highlighting their contributions and achievements as a computer scientist, with each fact separated with a new line character. ".format(person)}] for agent in range(agents)]
 
         for round in range(rounds):
@@ -82,22 +101,23 @@ if __name__ == "__main__":
                         message = construct_message(agent_contexts_other, 2*round - 1, person=person, final=False)
                     agent_context.append(message)
 
-                try:
-                    completion = openai.ChatCompletion.create(
-                              model="gpt-3.5-turbo-0301",
-                              messages=agent_context,
-                              n=1)
-                except:
-                    completion = openai.ChatCompletion.create(
-                              model="gpt-3.5-turbo-0301",
-                              messages=agent_context,
-                              n=1)
+                while True:
+                    try:
+                        completion = openai.ChatCompletion.create(
+                                  model="gpt-3.5-turbo-0301",
+                                  messages=agent_context,
+                                  n=1) if claude_agent is None else \
+                                    claude_agent.context_ask(agent_context)
+                        break
+                    except Exception as err:
+                        print(err)
+                        continue
 
                 print(completion)
-                assistant_message = construct_assistant_message(completion)
+                assistant_message = construct_assistant_message(completion, is_claude=True)
                 agent_context.append(assistant_message)
 
-            bullets = parse_bullets(completion["choices"][0]['message']['content'])
+            bullets = parse_bullets(completion["choices"][0]['message']['content'] if claude_agent is None else completion.content[-1].text)
 
             # The LM just doesn't know this person so no need to create debates
             if len(bullets) == 1:

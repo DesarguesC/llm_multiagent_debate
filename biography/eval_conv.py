@@ -1,5 +1,10 @@
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import json
+from claude_util import *
 import openai
+import pandas as pd
 import numpy as np
 import time
 
@@ -49,9 +54,19 @@ def filter_people(person):
     return people
 
 if __name__ == "__main__":
-    response = json.load(open("biography_1_2.json", "r"))
+    """
+        run file in main directory: 
+            python ./biography/eval_conv.py
+    """
+    # init Claude Agent
+    api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
+    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key, max_tokens=600)
 
-    with open("article.json", "r") as f:
+    # response of LLM
+    response = json.load(open("./biography/biography_3_2.json", "r"))
+
+    # standard answers
+    with open("./biography/article.json", "r") as f:
         gt_data = json.load(f)
 
     gt_data_filter = {}
@@ -78,6 +93,7 @@ if __name__ == "__main__":
         for description in bio_descriptions:
 
             bio_description = description[-1]['content']
+            # print(f'bio_description = {bio_description}')
 
             bio_bullets = parse_bullets(bio_description)
             if len(bio_bullets) == 1:
@@ -90,21 +106,21 @@ if __name__ == "__main__":
             for bullet in gt_bullets:
                 message = [{"role": "user", "content": "Consider the following biography of {}: \n {} \n\n Is the above biography above consistent with the fact below? \n\n {} \n Give a single word answer, yes, no, or uncertain. Carefully check the precise dates and locations between the fact and the above biography.".format(person, bio_bullets, bullet)}]
 
-                try:
-                    completion = openai.ChatCompletion.create(
-                              model="gpt-3.5-turbo-0301",
-                              messages=message,
-                              n=1)
-                except Exception as e:
-                    print("sleeping")
-                    time.sleep(20)
-                    continue
+                while True:
+                    try:
+                        completion = openai.ChatCompletion.create(
+                                  model="gpt-3.5-turbo-0301",
+                                  messages=message,
+                                  n=1) if claude_agent is None else \
+                                    claude_agent.context_ask(message)
+                        break
+                    except Exception as err:
+                        print(err)
+                        time.sleep(20)
+                        continue
 
-                print(message)
-
-                content = completion["choices"][0]["message"]["content"]
-                print(content)
-                accurate = parse_yes_no(content)
+                # print(message)
+                accurate = parse_yes_no(completion["choices"][0]["message"]["content"] if claude_agent is None else completion.content[-1].text)
 
                 if accurate is not None:
                     accuracies.append(float(accurate))

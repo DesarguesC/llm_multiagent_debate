@@ -5,7 +5,7 @@ import json
 from claude_util import *
 import openai
 import random
-from time import time
+import time
 from tqdm import tqdm
 import pandas as pd
 
@@ -63,12 +63,13 @@ if __name__ == "__main__":
 
     """
         run file in main directory: 
-            python math/gen_math.py
-     """
+            python ./biography/gen_conv.py
+    """
 
     # init Claude Agent
     api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
-    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key)
+    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key, max_tokens=600)
+    # default 300 tokens are insufficient
 
     with open("./biography/article.json", "r") as f:
         data = json.load(f)
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     generated_description = {}
 
     people_num = 5 # original: 40
-    start_time = time()
+    start_time = time.time()
     for idd in tqdm(range(people_num)):
         person = people[idd]
         agent_contexts = [[{"role": "user", "content": "Give a bullet point biography of {} highlighting their contributions and achievements as a computer scientist, with each fact separated with a new line character. ".format(person)}] for agent in range(agents)]
@@ -111,9 +112,10 @@ if __name__ == "__main__":
                         break
                     except Exception as err:
                         print(err)
+                        time.sleep(20)
                         continue
 
-                print(completion)
+                # print(completion)
                 assistant_message = construct_assistant_message(completion, is_claude=True)
                 agent_context.append(assistant_message)
 
@@ -125,5 +127,7 @@ if __name__ == "__main__":
 
         generated_description[person] = agent_contexts
 
-    json.dump(generated_description, open("./biography_{}_{}.json".format(agents, rounds), "w"))
+    json.dump(generated_description, open("./biography/biography_{}_{}.json".format(agents, rounds), "w"))
+    end_time = time.time()
+    print(f'request cost time = {end_time - start_time}') # takes 91.86s for 5 persons
 

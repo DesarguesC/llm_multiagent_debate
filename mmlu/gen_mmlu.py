@@ -39,6 +39,7 @@ def generate_answer(answer_context, claude_agent=None):
                       messages=answer_context,
                       n=1) if claude_agent is None else \
                         claude_agent.context_ask(answer_context)
+            break
         except Exception as err:
             print(err)
             time.sleep(20)
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     """
     # init Claude Agent
     api_key = list(pd.read_csv('key.csv')['anthropic'])[0]
-    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key, tokens=1000) # 300, 600 insuficient
+    claude_agent = Claude(engine='claude-3-haiku-20240307', api_key=api_key, max_tokens=1000) # 300, 600 insuficient
 
     agents = 3
     rounds = 2
@@ -75,36 +76,38 @@ if __name__ == "__main__":
     tasks = glob("./mmlu/data/test/*.csv")
 
     dfs = [pd.read_csv(task) for task in tasks]
-
+    print('I/O Finished')
     random.seed(0)
     response_dict = {}
     tot_num = 5 # original: 100
     start_time = time.time()
-    for i in tqdm(range(tot_num)):
+    for i in range(tot_num):
         df = random.choice(dfs)
         ix = len(df)
+        # print(f'[cur-len] = {ix}')
         idx = random.randint(0, ix-1)
 
         question, answer = parse_question_answer(df, idx)
 
         agent_contexts = [[{"role": "user", "content": question}] for agent in range(agents)]
-
         for round in range(rounds):
-            for i, agent_context in enumerate(agent_contexts):
-
+            # print(f'[round: {round}]')
+            for i, agent_context in enumerate(tqdm(agent_contexts)):
+                # print(i)
                 if round != 0:
                     agent_contexts_other = agent_contexts[:i] + agent_contexts[i+1:]
                     message = construct_message(agent_contexts_other, question, 2 * round - 1)
                     agent_context.append(message)
 
                 completion = generate_answer(agent_context, claude_agent=claude_agent)
-
+                # print(f'Term-{i}, generate_answer DONE...')
                 assistant_message = construct_assistant_message(completion, is_claude=True)
+                # print(f'Term-{i}, construct_message DONE...')
                 agent_context.append(assistant_message)
-                print(completion)
+                # print(completion)
 
         response_dict[question] = (agent_contexts, answer)
 
-    json.dump(response_dict, open("mmlu_{}_{}.json".format(agents, rounds), "w"))
+    json.dump(response_dict, open("./mmlu/mmlu_{}_{}.json".format(agents, rounds), "w"))
     end_time = time.time()
-    print(f'request cost time = {end_time - start_time}') #
+    print(f'request cost time = {end_time - start_time}') # 111.18s for 5 of tot

@@ -111,7 +111,11 @@ def most_frequent(List):
     return num
 
 if __name__ == "__main__":
-    response_dict = json.load(open("mmlu_personalities_3_2.json", "r"))
+    """
+        run file in main directory: 
+            python ./mmlu/eval_mmlu.py
+    """
+    response_dict = json.load(open("./mmlu/mmlu_3_2.json", "r"))
     questions = list(response_dict.keys())
 
     accuracies = []

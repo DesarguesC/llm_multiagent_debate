@@ -88,7 +88,7 @@ if __name__ == "__main__":
     for idd in tqdm(range(len(people))):
         person = people[idd]
         if person not in gt_data:
-            continue
+            continue # False?
 
         gt_description = gt_data[person]
         gt_bullets = parse_bullets(gt_description)
